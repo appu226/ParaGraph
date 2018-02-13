@@ -1,0 +1,2 @@
+ParaGraph was originally written by Parakram Majumdar, inspired by a blog post
+titled "Deep Learning from scratch" by Daniel Sabinasz.
