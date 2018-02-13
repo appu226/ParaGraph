@@ -9,7 +9,6 @@
 #include "unit_test.h"
 #include <para/graph/exception.h>
 #include <sstream>
-#include <iomanip>
 
 namespace para {
 namespace graph {
@@ -37,9 +36,10 @@ tensor_cptr generate_random_tensor(const tensor::N_vector& dimensionalities, std
 
 std::string print_tensor(const tensor& t, const std::string& name) {
     std::stringstream ss;
+    ss.precision(17);
     ss << "value of " << name << " is:\n";
     for (std::size_t offset = 0; offset < t.data.size(); ++offset) {
-        ss << std::setw(12) << t.data[offset] << " ";
+        ss << t.data[offset] << " ";
         tensor::N_vector pos = t.compute_position(offset);
         for (int i_pos = pos.size() - 1; i_pos >= 0; --i_pos) {
             if (pos[i_pos] == t.dimensionalities[i_pos] - 1) {

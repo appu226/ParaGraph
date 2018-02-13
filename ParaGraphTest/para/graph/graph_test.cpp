@@ -10,6 +10,7 @@
 #include <para/graph/math.h>
 #include <para/graph/graph.h>
 #include <para/graph/exception.h>
+#include <para/graph/ml_graph.h>
 #include <algorithm>
 #include <random>
 
@@ -40,114 +41,7 @@ struct w_x_plus_b {
     }
 
     static tensor_function_csptr multiply(int num_common_dims) {
-        struct mult: tensor_function {
-            int num_common_dims;
-            mult(int ncd) :
-                            num_common_dims(ncd) {
-            }
-            tensor_cptr value(const tensor_cptr_vec& inputs) const override {
-                assert(inputs.size() == 2, "::mult::value can only work with two inputs.");
-                return tensor_cptr(
-                        new tensor(std::move(tensor::chain_multiplication(*inputs[0], *inputs[1], num_common_dims))));
-            }
-            derivative deriv(const tensor_cptr_vec& inputs) const override {
-                assert(inputs.size() == 2, "::mult::deriv can only work with two inputs.");
-                tensor_cptr v(
-                        new tensor(std::move(tensor::chain_multiplication(*inputs[0], *inputs[1], num_common_dims))));
-                /*
-                 *  Let:
-                 *       A  X  B  =  C
-                 *      mxn X nxp = mxp
-                 *
-                 *  In other words:
-                 *               n
-                 *      C[i,j] = ∑ A[i,k]∙B[k,j]
-                 *              k=1
-                 *
-                 *  Therefore:
-                 *      ∂C[i,j]       ∂       n
-                 *      --------  =  ----   ( ∑  A[i,r]∙B[r,j])
-                 *      ∂A[k,l]     ∂A[k,l]  r=1
-                 *
-                 *                = {  B[l,j] if i==k
-                 *                  {  0      otherwise
-                 *
-                 *                = dCdA[k,l,i,j]
-                 *
-                 *  And:
-                 *      ∂C[i,j]       ∂       n
-                 *      --------  =  ----   ( ∑  A[i,r]∙B[r,j])
-                 *      ∂B[k,l]     ∂B[k,l]  r=1
-                 *
-                 *                = {  A[i,k] if l==j
-                 *                  {  0      otherwise
-                 *
-                 *                = dCdB[k,l,i,j]
-                 */
-                const tensor& A = *inputs[0];
-                const tensor& B = *inputs[1];
-                const tensor& C = *v;
-
-                auto calc_size = [](tensor::N_vector::const_iterator begin, tensor::N_vector::const_iterator end) {
-                    auto mult_func = [](tensor::N acc, tensor::N next) {return acc * next;};
-                    return std::accumulate(begin, end, 1, mult_func);
-                };
-                typedef std::size_t N;
-                typedef const N CN;
-                CN m = calc_size(A.dimensionalities.begin(), A.dimensionalities.end() - num_common_dims);
-                CN n = calc_size(A.dimensionalities.begin() + num_common_dims, A.dimensionalities.end());
-                CN p = calc_size(B.dimensionalities.begin() + num_common_dims, B.dimensionalities.end());
-
-                // set dC/dA for all k, l, i, j using:
-                //     dCdA[k,l,i,j] = if (i==k) B[l,j] else 0
-                tensor dCdA(std::move(tensor::zero_derivative(C.dimensionalities, A.dimensionalities)));
-                // compute step sizes for k, l, i, j for use as offset in dCdA
-                CN j_dcda = 1;
-                CN i_dcda = j_dcda * p;
-                CN l_dcda = i_dcda * m;
-                CN k_dcda = l_dcda * n;
-                //compute step sizes for l, j for use as offset in B
-                CN j_b = 1;
-                CN l_b = j_b * p;
-                // loop over all k, l, i, j
-                for (N i = 0; i < m; ++i) {
-                    // we care only when k = i, since otherwise dC/dA is zero
-                    CN k = i;
-                    for (std::size_t j = 0; j < p; ++j)
-                        for (std::size_t l = 0; l < n; ++l)
-                            dCdA.data[k * k_dcda + l * l_dcda + i * i_dcda + j * j_dcda] = B.data[l * l_b + j * j_b];
-                }
-
-                // set dC/dB for all k, l, i, j using:
-                //    dCdB[k,l,i,j] =  if (l==j) A[i,k] else 0
-                tensor dCdB(std::move(tensor::zero_derivative(C.dimensionalities, B.dimensionalities)));
-                // compute step sizes for k, l, i, j for use as offset in dCdB
-                CN j_dcdb = 1;
-                CN i_dcdb = j_dcdb * p;
-                CN l_dcdb = i_dcdb * m;
-                CN k_dcdb = l_dcdb * p;
-                // compute step sizes for i, k for use as offset in A
-                CN k_a = 1;
-                CN i_a = k_a * n;
-                // loop over all k, l, i, j
-                for (N l = 0; l < p; ++l) {
-                    // we care only when l = j, since otherwise dC/dB is zero
-                    CN j = l;
-                    for (N k = 0; k < n; ++k) {
-                        for (N i = 0; i < m; ++i) {
-                            dCdB.data[k * k_dcdb + l * l_dcdb + i * i_dcdb + j * j_dcdb] = A.data[i * i_a + k * k_a];
-                        }
-                    }
-                }
-
-                // create tensor_cptrs of derivatives
-                tensor_cptr d1(new tensor(std::move(dCdA)));
-                tensor_cptr d2(new tensor(std::move(dCdB)));
-
-                return derivative { v, tensor_cptr_vec { d1, d2 } };
-            }
-        };
-        return tensor_function_csptr(new mult(num_common_dims));
+        return tensor_function_factory::chain_multiplication(num_common_dims);
     }
 
     static tensor_function_csptr add() {
