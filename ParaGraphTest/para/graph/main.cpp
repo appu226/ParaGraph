@@ -17,6 +17,7 @@
 
 #include "math_test.h"
 #include "graph_test.h"
+#include "ml_graph_builder_test.h"
 #include "tensor_function_factory_test.h"
 
 namespace {
@@ -47,6 +48,7 @@ int main(int argc, char** argv) {
     register_test<tensor_function_factory_log_test>(uts);
     register_test<tensor_function_factory_element_wise_multiplication_test>(uts);
     register_test<tensor_function_factory_negative_test>(uts);
+    register_test<ml_graph_builder_test>(uts);
     run_unit_tests(uts);
     return 0;
 }

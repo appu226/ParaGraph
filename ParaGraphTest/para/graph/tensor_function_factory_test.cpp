@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "tensor_function_factory_test.h"
 #include "graph_test_utils.h"
 
@@ -59,9 +58,6 @@ void test_function(const char* name, const tensor_function_csptr& func, const te
         tensor projected_bump_in_value = tensor::chain_multiplication(delta, d_wrt_input,
                 input.dimensionalities.size());
         tensor projected_bumped_value = tensor::add(*v, projected_bump_in_value);
-
-        std::cout << print_tensor(*bumped_value, "bumped_value") << std::endl;
-        std::cout << print_tensor(projected_bumped_value, "projected_bumped_value") << std::endl;
 
         assert_tensors_are_close(*bumped_value, projected_bumped_value, derivative_tolerance,
                 std::string("derivative for function ") + name + " failed to project");
