@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef PARA_GRAPH_ML_GRAPH_H_
 #define PARA_GRAPH_ML_GRAPH_H_
 

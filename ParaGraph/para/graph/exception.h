@@ -32,6 +32,13 @@ void stream_all(std::stringstream& ss, const t_first& first, const t_remaining& 
     return stream_all(ss, remaining ...);
 }
 
+template<typename t_first, typename ... t_remaining>
+std::string concat(const t_first& first, const t_remaining& ... remaining) {
+    std::stringstream ss;
+    stream_all(ss, first, remaining ...);
+    return ss.str();
+}
+
 template<typename ... t_messages>
 void assert(bool condition, const t_messages& ... remaining) {
     if (!condition) {
