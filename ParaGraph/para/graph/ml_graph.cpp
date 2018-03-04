@@ -76,7 +76,7 @@ struct tensor_function_chain_multiplication: tensor_function {
         typedef std::size_t N;
         typedef const N CN;
         CN m = calc_size(A.dimensionalities.begin(), A.dimensionalities.end() - num_common_dims);
-        CN n = calc_size(A.dimensionalities.begin() + num_common_dims, A.dimensionalities.end());
+        CN n = calc_size(A.dimensionalities.end() - num_common_dims, A.dimensionalities.end());
         CN p = calc_size(B.dimensionalities.begin() + num_common_dims, B.dimensionalities.end());
 
         // set dC/dA for all k, l, i, j using:
@@ -95,8 +95,9 @@ struct tensor_function_chain_multiplication: tensor_function {
             // we care only when k = i, since otherwise dC/dA is zero
             CN k = i;
             for (std::size_t j = 0; j < p; ++j)
-                for (std::size_t l = 0; l < n; ++l)
+                for (std::size_t l = 0; l < n; ++l) {
                     dCdA.data[k * k_dcda + l * l_dcda + i * i_dcda + j * j_dcda] = B.data[l * l_b + j * j_b];
+                }
         }
 
         // set dC/dB for all k, l, i, j using:
@@ -167,6 +168,9 @@ struct ml_graph_builder_impl: ml_graph_builder {
     }
     operation negative(node n) override {
         return add_operation(uid("negative"), tensor_function_factory::negative(), node_vec { n });
+    }
+    operation softmax(node n) override {
+        return add_operation(uid("softmax"), tensor_function_factory::softmax(), node_vec { n });
     }
 
     graph_cuptr build_graph() const override {
@@ -377,6 +381,90 @@ tensor_function_csptr tensor_function_factory::negative() {
         }
     };
     return tensor_function_csptr(new tensor_function_negative);
+}
+
+tensor_function_csptr tensor_function_factory::softmax() {
+    struct tensor_function_softmax: tensor_function {
+        typedef std::pair<double, tensor_cptr> DxT;
+        DxT C_and_F(const tensor_cptr_vec& tv) const {
+            /*
+             * Let F be the softmax of input V
+             * Then 
+             *   F_i = exp( V_i ) / C
+             * Where
+             *          n
+             *    C  =  ∑ exp( V_k )
+             *         k=1 
+             */
+            assert(tv.size() == 1, "softmax only works on a single input.");
+            std::vector<double> F;
+            auto const & V = tv[0]->data;
+            F.reserve(V.size());
+            double C = 0;
+            std::transform(V.begin(), V.end(), std::back_inserter(F), [&C](const double in) {
+                const double inexp = std::exp(in);
+                C += inexp;
+                return inexp;
+            });
+            std::for_each(F.begin(), F.end(), [C](double &in) {in /= C;});
+            return std::move(DxT(C, tensor_cptr(new tensor(tv[0]->dimensionalities, std::move(F)))));
+        }
+
+        tensor_cptr value(const tensor_cptr_vec& tv) const override {
+            return std::move(C_and_F(tv).second);
+        }
+
+        derivative deriv(const tensor_cptr_vec& tv) const override {
+            /*
+             * Let D be the gradient of F wrt V
+             * Then
+             *          ∂F_j                ∂   1           1     ∂ exp(V_j)
+             *   D_ij = ---- = exp(V_j) x ---- ---    +    --- x ------------
+             *          ∂V_i              ∂V_i  C           C     ∂   V_i
+             * For i == j, we get:
+             *                      -1       ∂C             1 
+             *   D_ii = exp(V_i) x ----- x ------     +    --- x exp(V_i)      
+             *                      C^2     ∂V_i            C
+             *           -exp(2*V_i)                        exp(V_i)
+             *        = -------------                 +    ----------
+             *               C^2                              C
+             *                        -              -
+             *           exp(V_i)    |      exp(V_i)  |
+             *        = ---------- x | 1 - ---------- |
+             *              C        |         C      |
+             *                        -              -
+             * And for i != j, we get:
+             *                      -1   ∂ C               1
+             *   D_ij = exp(V_j) x ----- ----        +    --- x 0
+             *                      C^2  ∂V_i              C
+             *             - exp(V_i + V_j)
+             *        =  --------------------
+             *                     C^2
+             */
+            auto const cf = C_and_F(tv);
+            auto const C = cf.first;
+            auto const & F = cf.second;
+            auto const V = tv[0]->data;
+            auto const f_size = F->data.size();
+            auto const d_size = f_size * f_size;
+            auto const Csq = C * C;
+            std::vector<double> D(d_size);
+            for (std::size_t ij = 0; ij < d_size; ++ij) {
+                auto const i = ij / f_size;
+                auto const j = ij % f_size;
+                if (i == j) {
+                    auto const evi_by_c = std::exp(V[i]) / C;
+                    D[ij] = evi_by_c * (1 - evi_by_c);
+                } else {
+                    D[ij] = -std::exp(V[i] + V[j]) / Csq;
+                }
+            }
+            auto D_dim = F->dimensionalities;
+            D_dim.insert(D_dim.end(), F->dimensionalities.begin(), F->dimensionalities.end());
+            return derivative { F, tensor_cptr_vec(1, tensor_cptr(new tensor(std::move(D_dim), std::move(D)))) };
+        }
+    };
+    return tensor_function_csptr(new tensor_function_softmax);
 }
 
 ml_graph_builder_uptr ml_graph_builder::empty() {

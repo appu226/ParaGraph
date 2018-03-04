@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef PARA_GRAPH_GRAPH_H_
 #define PARA_GRAPH_GRAPH_H_
 
@@ -82,6 +81,11 @@ struct graph {
 
     virtual tensor_cptr_vec create_variable_values(const graph_input_map& input_value_map) const = 0;
 
+    virtual std::string get_variable_name(variable v) const = 0;
+    virtual std::string get_operation_name(operation o) const = 0;
+    virtual variable get_variable(const std::string& name) const = 0;
+    virtual operation get_operation(const std::string& name) const = 0;
+
     virtual ~graph();
 };
 typedef std::unique_ptr<const graph> graph_cuptr;
@@ -102,7 +106,7 @@ struct graph_builder {
 typedef std::unique_ptr<graph_builder> graph_builder_uptr;
 
 }
- // end namspace graph
+// end namspace graph
 }// end namespace para
 
 #endif /* PARA_GRAPH_GRAPH_H_ */

@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #include "graph.h"
 #include "exception.h"
 #include <algorithm>
@@ -311,6 +310,32 @@ struct graph_impl: para::graph::graph {
     graph_impl(const std::vector<variable_impl>& _variables, const std::vector<operation_impl>& _operations) :
                     variables(_variables),
                     operations(_operations) {
+    }
+
+    std::string get_variable_name(variable v) const override {
+        assert(v.index >= 0 && v.index < static_cast<int>(variables.size()),
+                "Cannot get name from variable with index ", v.index);
+        return variables[v.index].name;
+    }
+
+    std::string get_operation_name(operation o) const override {
+        assert(o.index >= 0 && o.index < static_cast<int>(operations.size()),
+                "Cannot get name from operation with index ", o.index);
+        return operations[o.index].name;
+    }
+
+    variable get_variable(std::string const& name) const override {
+        for (const auto& vimple : variables)
+            if (vimple.name == name)
+                return variable(vimple.index);
+        throw std::runtime_error("Could not find variable with name " + name);
+    }
+
+    operation get_operation(std::string const& name) const override {
+        for (const auto& oimpl : operations)
+            if (oimpl.name == name)
+                return operation(oimpl.index);
+        throw std::runtime_error("Could not find operation with name " + name);
     }
 };
 

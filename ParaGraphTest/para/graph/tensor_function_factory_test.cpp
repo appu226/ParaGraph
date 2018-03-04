@@ -176,6 +176,24 @@ void tensor_function_factory_negative_test::run() const {
     test_function("negative", tensor_function_factory::negative(), { t }, t_out, dre);
 }
 
+std::string tensor_function_factory_softmax_test::name() const {
+    return "tensor_function_factory_softmax_test";
+}
+
+void tensor_function_factory_softmax_test::run() const {
+    auto t = generate_random_tensor( { 2, 3 }, dre);
+    tensor t_out = *t;
+    double total = 0.0;
+    for (auto &t_out_value : t_out.data) {
+        t_out_value = std::exp(t_out_value);
+        total += t_out_value;
+    }
+    for (auto &t_out_value : t_out.data) {
+        t_out_value /= total;
+    }
+    test_function("softmax", tensor_function_factory::softmax(), { t }, t_out, dre);
+}
+
 } // end namespace graph
 } // end namespace para
 

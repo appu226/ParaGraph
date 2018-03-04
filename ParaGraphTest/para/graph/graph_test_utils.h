@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef PARA_GRAPH_GRAPH_TEST_UTILS_H_
 #define PARA_GRAPH_GRAPH_TEST_UTILS_H_
 
@@ -27,7 +26,7 @@ namespace graph {
 void assert_tensors_are_close(const tensor& lhs, const tensor& rhs, double relative_tolerance,
         const std::string& message);
 
-tensor_cptr generate_random_tensor(const tensor::N_vector& dims, std::default_random_engine& dre);
+tensor_cptr generate_random_tensor(const tensor::N_vector& dims, std::default_random_engine& dre, double max = 1.0);
 
 std::string print_tensor(const tensor& t, const std::string& name);
 

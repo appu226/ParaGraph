@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 #ifndef PARA_GRAPH_TENSOR_FUNCTION_FACTORY_TEST_H_
 #define PARA_GRAPH_TENSOR_FUNCTION_FACTORY_TEST_H_
 
@@ -58,7 +57,13 @@ struct tensor_function_factory_negative_test: unit_test {
     void run() const override;
 };
 
-} // end namespace graph
-} // end namespace para
+struct tensor_function_factory_softmax_test: unit_test {
+    std::string name() const override;
+    void run() const override;
+};
+
+}
+// end namespace graph
+}// end namespace para
 
 #endif /* PARA_GRAPH_TENSOR_FUNCTION_FACTORY_TEST_H_ */

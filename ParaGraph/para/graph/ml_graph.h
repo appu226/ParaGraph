@@ -31,6 +31,7 @@ struct tensor_function_factory {
     static tensor_function_csptr log();
     static tensor_function_csptr element_wise_multiplication();
     static tensor_function_csptr negative();
+    static tensor_function_csptr softmax();
 };
 
 struct ml_graph_builder {
@@ -46,6 +47,7 @@ struct ml_graph_builder {
     virtual operation log(node n) = 0;
     virtual operation element_wise_multiplication(node lhs, node rhs) = 0;
     virtual operation negative(node lhs) = 0;
+    virtual operation softmax(node n) = 0;
 
     virtual graph_cuptr build_graph() const = 0;
 

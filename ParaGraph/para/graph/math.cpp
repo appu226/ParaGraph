@@ -76,7 +76,7 @@ bool tensor::is_valid() const {
 tensor tensor::zero(const N_vector& dimensionalities) {
     std::size_t total_size = std::accumulate(dimensionalities.begin(), dimensionalities.end(), 1,
             [](std::size_t acc, N dim) {return acc * dim;});
-    return std::move(tensor(dimensionalities, std::move(std::vector<double>(total_size, 0))));
+    return std::move(tensor(dimensionalities, std::move(std::vector<double>(total_size, 0.0))));
 }
 
 tensor tensor::zero_derivative(const N_vector& function_dimensionalities, const N_vector& variable_dimensionalities) {

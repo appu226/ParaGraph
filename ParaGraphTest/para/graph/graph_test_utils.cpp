@@ -34,11 +34,12 @@ void assert_tensors_are_close(const tensor& lhs, const tensor& rhs, double relat
     }
 }
 
-tensor_cptr generate_random_tensor(const tensor::N_vector& dimensionalities, std::default_random_engine& dre) {
+tensor_cptr generate_random_tensor(const tensor::N_vector& dimensionalities, std::default_random_engine& dre,
+        double max) {
     std::uniform_real_distribution<double> urd(0, 1);
     std::shared_ptr<tensor> t(new tensor(std::move(tensor::zero(dimensionalities))));
     for (std::size_t i = 0; i < t->data.size(); ++i) {
-        t->data[i] = urd(dre);
+        t->data[i] = urd(dre) * max;
     }
     return t;
 }
