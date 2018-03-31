@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include "graph.h"
-#include "exception.h"
+#include <para/graph/graph.h>
+#include <para/graph/exception.h>
 #include <algorithm>
 #include <iostream>
 

@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include "ml_graph.h"
-#include "exception.h"
+#include <para/graph/ml_graph.h>
+#include <para/graph/exception.h>
 
 #include <algorithm>
 #include <sstream>

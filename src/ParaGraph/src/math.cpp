@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include "math.h"
-#include "exception.h"
+#include <para/graph/math.h>
+#include <para/graph/exception.h>
 #include <algorithm>
 
 namespace para {

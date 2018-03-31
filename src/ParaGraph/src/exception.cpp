@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "exception.h"
+#include <para/graph/exception.h>
 
 namespace para {
 namespace graph {
