@@ -22,6 +22,9 @@
 namespace para {
 namespace graph {
 
+/**
+ * Factory for creating tensor_functions relevant to ML.
+ */
 struct tensor_function_factory {
     static tensor_function_csptr add();
     static tensor_function_csptr chain_multiplication(int num_common_dims);
@@ -33,6 +36,9 @@ struct tensor_function_factory {
     static tensor_function_csptr softmax();
 };
 
+/**
+ * Utility wrapper for building ML-relevant graphs.
+ */
 struct ml_graph_builder {
     typedef std::unique_ptr<ml_graph_builder> uptr;
 

@@ -370,7 +370,7 @@ struct graph_builder_impl: graph_builder {
         return o;
     }
 
-    graph_cuptr build_graph() override {
+    graph_cuptr build_graph() const override {
         return graph_cuptr(new graph_impl { variables, operations });
     }
 };
