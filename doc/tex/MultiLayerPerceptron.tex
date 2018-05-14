@@ -1,0 +1,215 @@
+%
+% Copyright 2018 Parakram Majumdar
+%
+% Licensed under the Apache License, Version 2.0 (the "License");
+% you may not use this file except in compliance with the License.
+% You may obtain a copy of the License at
+%
+%     http://www.apache.org/licenses/LICENSE-2.0
+%
+% Unless required by applicable law or agreed to in writing, software
+% distributed under the License is distributed on an "AS IS" BASIS,
+% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+% See the License for the specific language governing permissions and
+% limitations under the License.
+%
+
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\title{Multi Layered Perceptron}
+\author{Parakram Majumdar}
+
+\begin{document}
+  \maketitle
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\Prob}[2]{\mathbb{#1}\left[ #2 \right]}
+\newcommand{\sigmoid}[1]{\text{sigmoid}\left(#1\right)}
+\newcommand{\map}[2]{\text{map}\left(#1,#2\right)}
+  
+\section{Introduction}
+  We are given a training set $T$ of $t$ points in $\R^d$,
+  a set $L$ of $l$ labels,
+  and a \emph{classification} $C: T \rightarrow L$.
+  
+  Machine learning is interested in learning classifiers of the form
+  $f: \R^d \rightarrow L$ that can closely approximate $C$.
+
+\section{Single Perceptron, Single Point, Single Label}
+  Having truly one label is an uninteresting case,
+  as basically all points would have the same label,
+  and there is nothing to ``learn''.
+  Instead we assume two labels, $L_1$ and $L_2$.
+  We then train a classifier for $L_1$,
+  and assign to $L_2$ whatever is not in $L_1$.
+  
+  Given a single point $p \in \R^d$,
+  a single perceptron $c$ 
+  with \emph{weight} vector $w_c \in \R^d$, 
+  and a \emph{bias} $b_c \in \R$,
+  for classifying a single Label $L_1$,
+  accepts $p$ with the probability
+  \[ \hat y_{p,L_1} = \Prob{\hat P}{p \in L_1} =  \sigmoid{w_c \cdot p + b_c}\]
+  where
+  \[ \sigmoid{x} = \frac{e^x}{e^{x} + 1} \]
+  If the actual classification of the training point 
+  is given by $y_{p,L_1} = \Prob{I}{p \in L_1}$
+  then training criterion is to minimize 
+  the cross entropy:
+  \begin{eqnarray*} 
+    \mathbb{H} & = & \Prob{H}{\mathbb{P}, \mathbb{\hat P}} \\
+               & = & \Prob{E}{\log{ \frac{1}{\hat y}}} \\
+               & = & \sum_{L_i \in L}{\Prob{H}{y_{p, L_i}, \hat y_{p, L_i}}}\\
+               & = & -\sum_{L_i \in L}{y_{p, L_i}\log{\hat y_{p, L_i}}}\\
+               & = & -y_{p,L_1}\log(\hat y_{p,L_1}) - (1 - y_{p,L_1})\log(1 - \hat y_{p,L_1})
+   \end{eqnarray*}
+
+\section{Multiple Points}
+  Given a set of $t$ points
+  represented as a 2 dimensional tensor $T \in \R^{t\times d}$, 
+  the perceptron $c$ can then be \emph{applied}
+  to all the points in $T$ to get
+  \[ \hat y_{T,c} = \map{T \cdot w_c + b_c\overrightarrow{u_t}}{\sigmoid \cdot} \]
+  where 
+  \begin{itemize}
+    \item $\map{\overrightarrow x}{f}$ is
+            the element-wise application of $f$ on $\overrightarrow x$
+    \item $\overrightarrow{u_n} = [1, 1, 1, ... n \text{ times}]$
+  \end{itemize}
+  The $i^{th}$ element of $\hat y_{T, c}$ then gives us
+  the probability of the $i^{th}$ point being in $L_1$.
+  \[ \hat y_{T, c}[i] = \Prob{\hat P}{T[i] \in L_1} = \hat y_{T[i], c}\]
+  And therefore, if the actual classification 
+  of all training points is given by 
+  \[ y_{T,c} = \map{T}{\Prob{I}{\cdot \in L_1}} \]
+  then the training criterion is to minimize the cross entropy
+  \begin{eqnarray*}
+    \mathbb{H} & = & \sum_{i=1}^t \Prob{H}{y_{T, c}[i], \hat y_{T, c}[i]} \\
+               & = & \text{sum}(\text{map}(y_{T, c}, 
+                                            \hat y_{T, c}, 
+                                            \Prob{H}{\cdot, \cdot}
+                                           )
+                               )
+  \end{eqnarray*}
+  where
+  \begin{itemize}
+    \item $\text{sum}(x)$ gives the sum of all the elements 
+          in the tensor $x$
+    \item $\text{map}(x, y, f(\cdot, \cdot))$
+          is the element-wise application of
+          the binary function $f$ to the elements of $x$ and $y$.
+          In other words,
+          \[ \text{map}(x, y, f(\cdot, \cdot))[i] = f(x[i], y[i]) \]
+  \end{itemize}
+  
+\section{Multiple Labels}
+  Classifying a point across multiple labels may be achieved
+  using multiple perceptrons.
+  However, if we simply use the multiple perceptrons independently,
+  we end up with unconstrained probabilities
+  for a point belonging to each label.
+  Instead, we would ideally want the probabilities to add up to 1,
+  since a point can only belong to one label.
+  
+  Suppose we have $l$ labels, and corresponding $l$ perceptrons.
+  Each perceptron produces an output $x_i \in \R^t$,
+  where $t$ is the number of points.
+  Then the probability of point $T_j$ 
+  belonging to label $L_k$
+  is
+  \[ \hat y_{T_j, L_k} = 
+        \frac{e^{x_k[j]}}
+             {\sum_{m = 1}^{l} e^{x_m[j]} }
+  \]
+  
+  To simplify this notation, we introduce the softmax function:
+  \begin{eqnarray*}
+    \text{softmax}(\overrightarrow z)
+      & = & \text{softmax}(z_1, z_2, ... z_n)
+    \\
+      & = & \left[ \frac{e^{z_1}}{\sum_{i=1}^n e^{z_i}},
+                   \frac{e^{z_2}}{\sum_{i=1}^n e^{z_i}},
+                   ...,
+                   \frac{e^{z_n}}{\sum_{i=1}^n e^{z_i}}
+            \right]
+    \\
+    \text{softmax}(\overrightarrow z; j)
+      & = & \frac{e^{z_j}}{\sum_{i=1}^n e^{z_i}}
+  \end{eqnarray*}
+  
+  And concisely represent
+  all the probabilities as:
+  \[\hat y_{T, L} = \text{map}(x_1, x_2, ..., x_l, \text{softmax})\]
+  
+  Therefore, the training criteria is to minimize the cross-entropy:
+  \[ \mathbb{H}(\hat y_{T, L}, y_{T, L})
+       = \sum_{T_i \in T, L_j \in L} \mathbb{H}(\hat y_{T_i, L_j},
+                                                y_{T_i, L_j})
+  \]
+  
+\section{Multiple Layers of Perceptrons}
+  Multiple layers of perceptrons,
+  with non-linear activation functions, are necessary
+  for classifying data that is not linearly separable.
+  An activation function is applied to the output of a neuron
+  before feeding it to the next layer.
+  
+\section{Sample 2-Layer Perceptron}
+  Let the input data be organized
+  into a 2-dimensional structure
+  $T \in \R^{t \times d}$,
+  where $t$ is the number of points
+  and $d$ is the dimensionality of each point.
+  
+  We feed these points to the first layer
+  consisting of, say, $m$ perceptrons.
+  Thus, we have $m$ weight vectors:
+  \[ w_{1, 1}, w_{1, 2}, ..., w_{1, m} \in \R^d \]
+  and $m$ biases:
+  \[ b_{1, 1}, b_{1, 2}, ..., b_{1, m} \in \R \]
+  to give the unactivated output 
+  $p_{1, i} \in \R^{t}$ 
+  of the $i^{th}$ perceptron:
+  \[ p_{1, i} = T \cdot w_{1, i} + b_{1, i}\overrightarrow u_{t} \]
+  
+  These unactivated outputs $p_{1, \cdot}$ are passed 
+  through a sigmoid activation function
+  to get the final activated outputs
+  $z_{1, \cdot} \in R^{t}$ 
+  of this layer:
+  \[ z_{1, i} = \sigmoid{p_{1, i}} 
+              = \frac{e^{p_{1, i}}}{1 + e^{p_{1, i}}}
+  \]
+  
+  These outputs $z_{1, \cdot}$ then become 
+  the inputs for the next and final layer.
+  For convenience, we define
+  $z_1 \in \R^{t \times m}$
+  as the output vector of the first layer,
+  created by concatenating all the individual outputs.
+  
+  Since se have $l$ labels for classification,
+  the final layer should have $l$ perceptrons.
+  Thus, we have $l$ weight vectors:
+  \[ w_{2, 1}, w_{2, 2}, ..., w_{2, l} \in R^m \]
+  and $l$ biases:
+  \[ b_{2, 1}, b_{2, 2}, ..., b_{2, l} \in R \]
+  to give the unactivated outputs $p_{2, \cdot} \in \R^t$:
+  \[ p_{2, i} = z_1 \cdot w_{2, i} + b_{2, i} \overrightarrow u_{t} \]
+  
+  We leave the outputs unactivated for this final layer,
+  and concatenate the outputs to get $p_2 \in {R^{t \times l}}$
+  Thus, the probabilities $\hat y \in \R^{t \times l}$
+  of the points belonging to classes is given by:
+  \[ \hat y = \text{map}(p_2, \sigmoid{\cdot}) \]
+  
+  If the real probabilities are given by $y \in R^{t \times l}$
+  then the training criterion is to minimize the cross entropy:
+  \[
+    \mathbb{H}
+    = \Prob{H}{\hat y, y}
+    = \sum_{i \in T, j \in L} \Prob{H}{\hat y_{i, j}, y_{i, j}}
+  \]
+  
+\end{document}
