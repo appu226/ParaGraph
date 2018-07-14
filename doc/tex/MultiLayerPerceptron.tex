@@ -17,6 +17,8 @@
 \documentclass{article}
 \usepackage{amsmath}
 \usepackage{amssymb}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows,positioning}
 \title{Multi Layered Perceptron}
 \author{Parakram Majumdar}
 
@@ -178,8 +180,7 @@
   to get the final activated outputs
   $z_{1, \cdot} \in R^{t}$ 
   of this layer:
-  \[ z_{1, i} = \sigmoid{p_{1, i}} 
-              = \frac{e^{p_{1, i}}}{1 + e^{p_{1, i}}}
+  \[ z_{1, i} = \text{map}(p_{1, i}, \sigmoid{\cdot})
   \]
   
   These outputs $z_{1, \cdot}$ then become 
@@ -202,7 +203,7 @@
   and concatenate the outputs to get $p_2 \in {R^{t \times l}}$
   Thus, the probabilities $\hat y \in \R^{t \times l}$
   of the points belonging to classes is given by:
-  \[ \hat y = \text{map}(p_2, \sigmoid{\cdot}) \]
+  \[ \hat y = \text{map}(p_2, \text{softmax}(\cdot)) \]
   
   If the real probabilities are given by $y \in R^{t \times l}$
   then the training criterion is to minimize the cross entropy:
@@ -212,4 +213,78 @@
     = \sum_{i \in T, j \in L} \Prob{H}{\hat y_{i, j}, y_{i, j}}
   \]
   
+  \tikzstyle{io} = [circle, 
+                    text centered,
+                    draw=black]
+  \tikzstyle{perceptron} = [rectangle,
+                            text centered,
+                            draw=black,
+                            minimum width=1.5cm,
+                            minimum height=.8cm,
+                            fill=blue!20]
+  \tikzstyle{weight} = [rectangle,
+                        text centered,
+                        draw=black,
+                        fill=yellow!30,
+                        rounded corners]
+  \tikzstyle{arrow} = [thick,->,>=stealth]
+                            
+  \begin{tikzpicture}[node distance=2cm]
+  \node (input) [io, fill=green!20] {$T$};
+  \node (inputlabel) [above of=input] {Input};
+  
+  \node (p12) [perceptron, right=1cm of input] {$z_{12}$};
+  \node (p11) [perceptron, above=2cm of p12] {$z_{11}$};
+  \node (p13) [perceptron, below=2cm of p12] {$z_{13}$};
+  \node (w11) [weight, below=.5cm of p11] {$w_{11}, b_{11}$};
+  \node (w12) [weight, below=.5cm of p12] {$w_{12}, b_{12}$};
+  \node (w13) [weight, below=.5cm of p13] {$w_{13}, b_{13}$};
+  \node (p1label) [above=0.2cm of p11] {Layer 1};
+  
+  \node (p22) [perceptron, right=1cm of p12] {$p_{22}$};
+  \node (p21) [perceptron, above=2cm of p22] {$p_{21}$};
+  \node (p23) [perceptron, below=2cm of p22] {$p_{23}$};
+  \node (w21) [weight, below=.5cm of p21] {$w_{21}, b_{21}$};
+  \node (w22) [weight, below=.5cm of p22] {$w_{22}, b_{22}$};
+  \node (w23) [weight, below=.5cm of p23] {$w_{23}, b_{23}$};
+  \node (p2label) [above=0.2cm of p21] {Layer 2};
+  
+  \node (output) [perceptron, right=1cm of p22] {$\hat y$};
+  \node (softmaxlabel) [above of=output] {Prediction};
+  
+  \node (error) [io, right=1cm of output, fill=red!20] {$\mathbb{H}$};
+  \node (errorlabel) [above of=error] {Error};
+  \node (y) [io, below=.5cm of error, fill=green!20] {$y$};
+  
+  \draw [arrow] (input) -- (p11.west);
+  \draw [arrow] (input) -- (p12.west);
+  \draw [arrow] (input) -- (p13.west);
+  
+  \draw [arrow] (p11.east) -- (p21.west);
+  \draw [arrow] (p11.east) -- (p22.west);
+  \draw [arrow] (p11.east) -- (p23.west);
+  
+  \draw [arrow] (p12.east) -- (p21.west);
+  \draw [arrow] (p12.east) -- (p22.west);
+  \draw [arrow] (p12.east) -- (p23.west);
+  
+  \draw [arrow] (p13.east) -- (p21.west);
+  \draw [arrow] (p13.east) -- (p22.west);
+  \draw [arrow] (p13.east) -- (p23.west);
+  
+  \draw [arrow] (p21.east) -- (output);
+  \draw [arrow] (p22.east) -- (output);
+  \draw [arrow] (p23.east) -- (output);
+  
+  \draw [arrow] (w11) -- (p11);
+  \draw [arrow] (w12) -- (p12);
+  \draw [arrow] (w13) -- (p13);
+  \draw [arrow] (w21) -- (p21);
+  \draw [arrow] (w22) -- (p22);
+  \draw [arrow] (w23) -- (p23);
+  
+  \draw [arrow] (output) -- (error);
+  \draw [arrow] (y) -- (error);
+  \end{tikzpicture}
+
 \end{document}
