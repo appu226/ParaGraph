@@ -1,0 +1,10 @@
+.metadata/*
+RemoteSystemsTempFiles/*
+.cproject
+.project
+.settings/*
+/.metadata/
+eclipse
+build
+doc/tex/*.aux
+doc/tex/*.log

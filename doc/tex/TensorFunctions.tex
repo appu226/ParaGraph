@@ -1,0 +1,422 @@
+%
+% Copyright 2018 Parakram Majumdar
+%
+% Licensed under the Apache License, Version 2.0 (the "License");
+% you may not use this file except in compliance with the License.
+% You may obtain a copy of the License at
+%
+%     http://www.apache.org/licenses/LICENSE-2.0
+%
+% Unless required by applicable law or agreed to in writing, software
+% distributed under the License is distributed on an "AS IS" BASIS,
+% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+% See the License for the specific language governing permissions and
+% limitations under the License.
+%
+
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\title{Common Functions on Tensors}
+\author{Parakram Majumdar}
+
+\begin{document}
+  \maketitle
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\Prob}[2]{\mathbb{#1}\left[ #2 \right]}
+\newenvironment{where}{\noindent{}where\begin{itemize}}{\end{itemize}}
+  
+\section{Introduction}
+  This document describes some of the standard tensor operations
+  that are relevant for machine learning.
+  The rigorous mathematician may note 
+  that for this document uses the term \emph{tensor}
+  merely as a substitute for \emph{multi-dimensional arrays}.
+  
+\section{Definitions}
+  \begin{itemize}
+  
+  \item
+  A \emph{tensor} $T$ of \emph{dimensionality} $d_1, d_2, ..., d_o$ is
+  a multi-dimensional array of real numbers in
+  $R^{d_1 \times d_2 \times ... \times d_o}$.
+  
+  \item
+  In the above definition,
+  the number of dimensions $o$ is also called
+  the \emph{order} of $T$.
+  
+  \item
+  The number of elements in $T$, i.e.,
+  $d_1 \times d_2 \times ... \times d_o$
+  is called the size of T.
+  
+  \item
+  For brevity, we introduce the following notations:
+  \begin{eqnarray*}
+    \overrightarrow{d_n} & \equiv & d_1, d_2, ..., d_n \\
+    \Pi d_n              & \equiv & d_1 \times d_2 \times ... \times d_n 
+  \end{eqnarray*}
+  
+  \item
+  A single argument \emph{tensor function} 
+  \[f: \R^{\Pi a_m} 
+       \rightarrow 
+       \R^{\Pi b_n}
+  \]
+  is a function that maps a tensor to another tensor.
+  
+  \item
+  The \emph{gradient} of the above mentioned $f$
+  at some point $x \in \R^{\Pi a_m}$
+  is a tensor 
+  \[\nabla f(x) \in \R^{\Pi a_m \times \Pi b_n} 
+  \]
+  that gives the rate of change of each element of $f(x)$
+  with respect to each element of $x$.
+  \[ \frac{\partial f(x)[\overrightarrow{j_n}]}
+          {\partial x[\overrightarrow{i_m}]}
+     = \nabla f(x)[\overrightarrow{i_m}, \overrightarrow{j_n}]
+  \]
+  
+  \item
+  A multiple argument tensor function
+  takes multiple input tensors, and hence, 
+  has a separate gradient tensor with respect to each input.
+  Note that, in general,
+  it is impossible to combine all these gradients into a single tensor,
+  since the various inputs may have different dimensionalities.
+  
+  \end{itemize}
+
+\section{Grouping of co-ordinates}
+  The tensors are implemented as a row-major one dimentional array
+  with zero based indexing.
+  For example, the three dimensional tensor 
+  $X \in \R^{2 \times 3 \times 4}$
+  is stored as a one dimensional array of size 
+  $2 \times 3 \times 4 = 24$.
+  The elements may be accessed by the formula:
+  \[ X[i, j, k] = X[i \times 3 \times 4 + j \times 4 + k] \]
+  where $i \in \{0, 1\}$, 
+        $j \in \{0, 1, 2\}$ and 
+        $k \in \{0, 1, 2, 3\}$.
+    
+  An interesting consequence of this 
+  is that consecutive dimensions may be squashed together 
+  without affecting the contents of the tensor.
+  For example, 
+  $X \in \R^{2 \times 3 \times 4}$ 
+  can be seen to be in
+  $\R^{2 \times 12}$,
+  $\R^{6 \times 4}$ and $\R^{24}$,
+  as long as the correct formulae are used to interconvert
+  the coordinates between these various forms.
+  
+  To further clarify, 
+  we temporarily introduce the notation of left superscripting
+  the dimensionality of $X$ to denote which format it is in.
+  Thus:
+  \begin{eqnarray*}
+    X[i, j, k] & = & {}^{2 \times 3 \times 4}X[i, j, k]\\ 
+               & = & {}^{2 \times 12}X[i, 4j+k] \\
+               & = & {}^{6 \times 4}X[3i + j, k] \\
+               & = & {}^{24}X[12i + 4j+k]
+  \end{eqnarray*}
+  
+  We now state again the above equivalence
+  in even crisper notation by introducing
+  the grouping of co-ordinates:
+  \begin{eqnarray*}
+    X[i, j, k] & = & X[[i], [j], [k]] \\ 
+               & = & X[[i, j], k] \\
+               & = & X[i, [j, k]] \\
+               & = & X[[i, j, k]]
+  \end{eqnarray*}
+  
+\section{Identity}
+  The identity tensor function $\mathbb{I}$ maps each tensor to itself,
+  and hence, is usually not useful in an efficient computation graph.
+  However, it is mentioned here as an example
+  of how the gradient of simple tensor functions
+  can be remarkably sparse.
+  
+  Consider an input 
+  $x \in \R^{\Pi a_n}$.
+  The gradient of $\mathbb{I}$ would then be
+  \begin{eqnarray*}
+    \nabla \mathbb{I}(x)[i_1, i_2, ..., i_n, j_1, j_2, ..., j_n]
+    & = & \frac{\partial (\mathbb{I}(x)[j_1, j_2, ..., j_n])}
+               {\partial x[i_1, i_2, ..., i_n]} \\
+    & = & \frac{\partial (\mathbb{I}(x)[\overrightarrow{j}])}
+               {\partial x[\overrightarrow{i}]} \\
+    & = & \frac{\partial x[\overrightarrow{j}]}
+               {\partial x[\overrightarrow{i}]} \\
+    & = & \begin{cases}
+            1, & \text{if } \overrightarrow{i} == \overrightarrow{j}\\
+            0, & \text{otherwise}
+          \end{cases}
+  \end{eqnarray*}
+  
+  Thus, $\nabla \mathbb{I}(x)$ is a \emph{diagonal} tensor with
+  very few non-zero elements.
+  
+\section{Back Propagation}
+  A common goal in machine learning is
+  to minimize an objective with respect to some parameters.
+  The back propagation algorithm is a \emph{gradient descent} algorithm
+  implemented on a computation graph, i.e.,
+  it computes the gradient of the objective
+  with respect to each parameter,
+  and then shifts the parameters to the direction
+  where the objective seems to be \emph{descending}.
+  
+  The algorithm starts off by computing the value of the each node
+  in the computation graph,
+  starting with the values of the nodes directly defined on the parameters, 
+  and ultimately the value of the final objective.
+  
+  Then, to compute the gradient of the objective
+  with respect to the parameters,
+  it starts applying the \emph{backward propagation} step
+  on each computation node, starting from the objective,
+  and ending at the parameters.
+  
+  Thus, the algorithm uses \emph{forward propagation}
+  for computing the value of the objective,
+  and then a \emph{backward propagation} to compute the gradient.
+  
+  As an example, suppose a given node $f$ has an input tensor $x$.
+  $x$ might be a parameter to the overall graph, 
+  or it might be the output of some other node.
+  Also, suppose $f$ feeds into some other nodes $g$ and $h$.
+  We will demonstrate the application of the backward propagation step
+  to $f$.
+  
+  Assume that the objective of the graph is $o$.
+  The backward propagation step on $f$ assumes 
+  that $g^*(f(x))$ and $h^*(f(x))$ are given, and computes $f^*(x)$,
+  where
+  \[ g^* = \frac{\partial o}{\partial g},
+     h^* = \frac{\partial o}{\partial h}, 
+     f^* = \frac{\partial o}{\partial f} 
+  \]
+  by using the simple relationship:
+  \[ f^* = \frac{\partial o}{\partial f} 
+         =   \frac{\partial o}{\partial g} \cdot \frac{\partial g}{\partial f}
+           + \frac{\partial o}{\partial h} \cdot \frac{\partial h}{\partial f}
+         = g^* \cdot g' + h^* \cdot h'
+  \]
+  The operator $\cdot$ in the above equation is a generalization 
+  of the \emph{vector dot product} to tensors.
+  We discuss this \emph{tensor dot product} operator
+  in a later section.
+  
+  Also, note that in general, $f$ could have more than one inputs,
+  and could have any number of outputs,
+  some of which might be repeated,
+  in case $f$ is a parameter to them more than once.
+  These generalisations, being somewhat simple,
+  are left to the reader.
+  
+\section{Tensor Dot Product}
+  Tensor dot product is a generalization of vector dot product
+  and matrix multiplication.
+  Given two tensors 
+  \[ L \in \R^{\Pi a_m \times \Pi b_n} \]
+  \[ R \in \R^{\Pi b_n \times \Pi c_o} \]
+  the \emph{tensor dot product of $L$ with $R$ on $n$ dimensions}
+  \[ L \cdot_n R = M \in \R^{\Pi a_m \times \Pi c_o} \]
+  is computed as \footnote{
+   The astute reader will note how
+   the bounds of the \emph{loop variable} $\overrightarrow i$
+   are element-wise from 
+   $[0, 0 ... (n \text{ times})]$ to 
+   $[b_1 - 1, b_2 - 1, ... b_n - 1]$.
+   This is consistent with the low level storage details
+   discussed in an earlier section.
+  }:
+  \[ M[\overrightarrow{a}, \overrightarrow{c}] 
+     = \sum_{\overrightarrow{i} = \overrightarrow{0}_n}
+           ^{\overrightarrow{i} < \overrightarrow{b}_n}
+            {L[\overrightarrow{a}, \overrightarrow{i}] 
+             \times R[\overrightarrow{i}, \overrightarrow{c}]
+            }
+  \]
+  Thus, matrix multiplication and vector dot product, 
+  can be seen as tensor dot products, 
+  of matrices and vectors, respectively,
+  on 1 dimension.
+  
+  To revisit how the tensor dot product is connected 
+  with the backward propagation algorithm,
+  suppose we have two tensor functions
+  \[ f: \R^{\Pi a_m} \rightarrow \R^{\Pi b_n} \]
+  \[ g: \R^{\Pi b_n} \rightarrow \R^{\Pi c_o} \]
+  with gradients
+  \[ \nabla f: \R^{\Pi a_m} \rightarrow \R^{\Pi a_m \times \Pi b_n} \]
+  \[ \nabla g: \R^{\Pi b_n} \rightarrow \R^{\Pi b_n \times \Pi c_o} \]
+  then the gradient of
+  \[ g \circ f = g(f(\cdot)): \R^{\Pi a_m} \rightarrow \R^{\Pi c_o} \]
+  denoted by
+  \[ \nabla (g \circ f): 
+               \R^{\Pi a_m} \rightarrow \R^{\Pi a_m \times \Pi c_o} \]
+  is computed by the \emph{chain rule}:
+  \[ \nabla (g \circ f) (x) = \nabla g(f(x)) \cdot_n \nabla f(x)
+     \text{, }\forall x \in \R^{\Pi a_m}
+  \]
+  Or in short:
+  \[ \nabla(g \circ f) = \nabla g \cdot \nabla f \]
+  
+  
+  We now look at the gradients of the dot product product,
+  which can of course be seen as a binary tensor,
+  with a dimensionality in the above example of:
+  \[ (\cdot_n): \R^{\Pi a_m \times \Pi b_n} 
+                \times 
+                \R^{\Pi b_n \times \Pi c_o}
+                \rightarrow
+                \R^{\Pi a_m \times \Pi c_o}
+  \]
+  There are of course two partial gradients, 
+  one with respect to each of the two arguments:
+  \[ \nabla_L M = \frac{\partial M}
+                       {\partial L}
+                \in \R^{\Pi a_m \times \Pi b_n \times 
+                        \Pi a_m \times c_o           }
+  \]
+  \[ \nabla_R M = \frac{\partial M}
+                       {\partial R}
+                \in \R^{\Pi b_n \times \Pi c_o \times
+                        \Pi a_m \times \Pi c_o       }
+  \]
+  These are defined as:
+  \begin{eqnarray*}
+    \nabla_L M[\overrightarrow{a}, 
+               \overrightarrow{b},
+               \overrightarrow{a'},
+               \overrightarrow{c}]
+    & = & \frac{\partial M[\overrightarrow{a'}, 
+                           \overrightarrow{c}]}
+               {\partial L[\overrightarrow{a},
+                           \overrightarrow{b}]} \\
+    & = & \frac{\partial 
+                \sum_{\overrightarrow{i} \leftarrow \overrightarrow{b}}
+                     {L[\overrightarrow{a'}, \overrightarrow{i}] 
+                      \times R[\overrightarrow{i}, \overrightarrow{c}]
+                     }}
+               {\partial L[\overrightarrow{a},
+                           \overrightarrow{b}]} \\
+    & = & \begin{cases}
+            R[\overrightarrow{b}, \overrightarrow{c}], 
+               & \text{if } \overrightarrow{a'} == \overrightarrow{a} \\
+            0  & \text{otherwise}
+          \end{cases}
+  \end{eqnarray*}
+  \begin{eqnarray*}
+    \nabla_R M[\overrightarrow{b}, 
+               \overrightarrow{c},
+               \overrightarrow{a},
+               \overrightarrow{c'}]
+    & = & \frac{\partial M[\overrightarrow{a}, 
+                           \overrightarrow{c'}]}
+               {\partial R[\overrightarrow{b},
+                           \overrightarrow{c}]} \\
+    & = & \frac{\partial 
+                \sum_{\overrightarrow{i} \leftarrow \overrightarrow{b}}
+                     {L[\overrightarrow{a}, \overrightarrow{i}] 
+                      \times R[\overrightarrow{i}, \overrightarrow{c'}]
+                     }}
+               {\partial R[\overrightarrow{b},
+                           \overrightarrow{c}]} \\
+    & = & \begin{cases}
+            L[\overrightarrow{a}, \overrightarrow{b}], 
+               & \text{if } \overrightarrow{c'} == \overrightarrow{c} \\
+            0  & \text{otherwise}
+          \end{cases}
+  \end{eqnarray*}
+  
+\section {Add scalar}
+  The core of a perceptron revolves around the formula:
+  \[
+      p = w \cdot x + b \overrightarrow u
+  \]
+  \begin{where}
+    \item $p$ is the \emph{output}
+    \item $w$ are the \emph{weights} of the perceptron
+    \item $x$ is the \emph{input}
+    \item $b$ is the \emph{bias}
+    \item $u$ is a unit tensor created to add $b$
+              to every element of $p$
+  \end{where}
+  
+  We define the scalar addition function $\boxplus$ to encapsulate
+  the addition of $b$ to each element in the output
+  \[
+      z \boxplus b = z + b.\overrightarrow{u}
+  \]
+  Thus,
+  \begin{eqnarray*}
+    \frac{\partial (z \boxplus b) }{\partial z} 
+      & = & \nabla \mathbb{I}(z)
+    \\
+    \frac{\partial (z \boxplus b) }{\partial b} 
+      & = & \nabla \mathbb{I}(z)
+  \end{eqnarray*}
+  
+\section {Sigmoid}
+  The sigmoid function on a scalar is defined as:
+  \[
+    \text{sigmoid}(x) = \frac{e^x}{1 + e^x}
+  \]
+  The derivative is therefore given as:
+  \[
+    \frac{\partial \text{sigmoid}(x)}
+         {\partial x}
+    =
+    \frac{e^x}{(1 + e^x)^2}
+    =
+    \text{sigmoid}(x)(1 - \text{sigmoid}(x))
+  \]
+  We extend this to tensors as 
+  an element wise application of the scalar version
+  \[
+    \text{sigmoid}(z) = \text{map}(z, \text{sigmoid}(.))
+  \]
+  And therefore, for an input $z \in \R^{\Pi a_n}$,
+  the gradient 
+  $\nabla \text{sigmoid}(z) \in \R^{\Pi a_n \times \Pi a_n}$ 
+  is defined as:
+  \[
+    \nabla \text{sigmoid}(z)[\overrightarrow{i_n}, \overrightarrow{j_n}]
+    =
+    \begin{cases}
+      \text{sigmoid}(z[\overrightarrow{i_n}])
+      \cdot
+      (1 - \text{sigmoid}(z[\overrightarrow{i_n}]))
+         & \text{if } \overrightarrow{i_n} == \overrightarrow{j_n}
+      \\
+      0  & \text{otherwise}
+    \end{cases}
+  \]
+  
+\end{document}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -24,28 +24,42 @@
 namespace para {
 namespace graph {
 
+/**
+ * Base case for variadic template.
+ * Does nothing.
+ */
 void stream_all(std::stringstream& ss);
 
+/**
+ * Variadic template to stream all arguments into an std::stringsream.
+ */
 template<typename t_first, typename ... t_remaining>
-void stream_all(std::stringstream& ss, const t_first& first, const t_remaining& ... remaining) {
-    ss << first;
-    return stream_all(ss, remaining ...);
+void stream_all(std::stringstream& ss, const t_first& first,
+		const t_remaining& ... remaining) {
+	ss << first;
+	return stream_all(ss, remaining ...);
 }
 
+/**
+ * Stream all arguments to an std::stringstream
+ * and return the final concatenated string.
+ */
 template<typename t_first, typename ... t_remaining>
 std::string concat(const t_first& first, const t_remaining& ... remaining) {
-    std::stringstream ss;
-    stream_all(ss, first, remaining ...);
-    return ss.str();
+	std::stringstream ss;
+	stream_all(ss, first, remaining ...);
+	return ss.str();
 }
 
+/**
+ * Assert a condition,
+ * and if false, throw a runtime_error with the message objects.
+ */
 template<typename ... t_messages>
-void assert(bool condition, const t_messages& ... remaining) {
-    if (!condition) {
-        std::stringstream err_ss;
-        stream_all(err_ss, remaining ...);
-        throw std::runtime_error(err_ss.str());
-    }
+void assert(bool condition, const t_messages& ... messages) {
+	if (!condition) {
+		throw std::runtime_error(concat(messages ...));
+	}
 }
 
 } // end namespace graph
