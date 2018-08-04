@@ -71,7 +71,7 @@ protected:
 struct variable: node {
 	variable(int index);
 };
-/* An operation node. */
+/** An operation node. **/
 struct operation: node {
 	operation(int index);
 };
