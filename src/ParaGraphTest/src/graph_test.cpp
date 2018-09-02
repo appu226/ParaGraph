@@ -108,7 +108,7 @@ void graph_scalar_test::run() const {
     tensor_cptr b = scalar_to_tensor(rand());
 
     tensor_cptr value = tg.value(w, x, b);
-    assert_tensors_are_close(*value, *scalar_to_tensor(w->data[0] * x->data[0] + b->data[0]), 1e-15,
+    assert_tensors_are_close(*value, *scalar_to_tensor(w->at(0) * x->at(0) + b->at(0)), 1e-15,
             "graph::value should work for scalars");
 
     derivative tgd = tg.deriv(w, x, b);

@@ -46,8 +46,8 @@ void test_function(const char* name, const tensor_function_csptr& func, const te
         const tensor& input = *inputs[i_input];
         const tensor& d_wrt_input = *d.node_derivative[i_input];
         tensor delta(*generate_random_tensor(input.dimensionalities, dre));
-        for (std::size_t i_delta = 0; i_delta < delta.data.size(); ++i_delta) {
-            delta.data[i_delta] *= step_size;
+        for (std::size_t i_delta = 0; i_delta < delta.size(); ++i_delta) {
+            delta[i_delta] *= step_size;
         }
 
         // bump input, compute value, and UN-bump input
@@ -95,9 +95,9 @@ void tensor_function_factory_chain_multiplication_test::run() const {
         for (std::size_t i2 = 0; i2 < t2_dims.back(); ++i2) {
             double v012 = 0;
             for (std::size_t i1 = 0; i1 < t1_dims.back(); ++i1) {
-                v012 += t1->data[t1->compute_offset( { i0, i1 })] * t2->data[t2->compute_offset( { i1, i2 })];
+                v012 += t1->at(t1->compute_offset( { i0, i1 })) * t2->at(t2->compute_offset( { i1, i2 }));
             }
-            t1_times_t2.data[t1_times_t2.compute_offset( { i0, i2 })] = v012;
+            t1_times_t2[t1_times_t2.compute_offset( { i0, i2 })] = v012;
         }
     }
     test_function("chain_multiplication", tensor_function_factory::chain_multiplication(1), tensor_cptr_vec { t1, t2 },
@@ -111,8 +111,8 @@ std::string tensor_function_factory_sigmoid_test::name() const {
 void tensor_function_factory_sigmoid_test::run() const {
     tensor::N_vector dims_in { 2, 3 };
     auto t_in = generate_random_tensor(dims_in, dre);
-    std::vector<double> t_out_data(t_in->data.size(), 0);
-    std::transform(t_in->data.begin(), t_in->data.end(), t_out_data.begin(),
+    std::vector<double> t_out_data(t_in->size(), 0);
+    std::transform(t_in->begin(), t_in->end(), t_out_data.begin(),
             [](double a) {return 1.0 / ( 1.0 + std::exp(-a));});
     tensor t_out(t_in->dimensionalities, std::move(t_out_data));
     test_function("sigmoid", tensor_function_factory::sigmoid(), tensor_cptr_vec { t_in }, t_out, dre);
@@ -131,7 +131,7 @@ void tensor_function_factory_reduce_sum_test::run() const {
             auto out_offset = t_out.compute_offset( { il, ir });
             for (tensor::N ic = 0; ic < cdim; ++ic) {
                 auto in_offset = t_in->compute_offset( { il, ic, ir });
-                t_out.data[out_offset] += t_in->data[in_offset];
+                t_out[out_offset] += t_in->at(in_offset);
             }
         }
     }
@@ -145,7 +145,7 @@ std::string tensor_function_factory_log_test::name() const {
 void tensor_function_factory_log_test::run() const {
     auto t_in = generate_random_tensor( { 2, 3 }, dre);
     tensor t_out(std::move(tensor::zero(t_in->dimensionalities)));
-    std::transform(t_in->data.begin(), t_in->data.end(), t_out.data.begin(), [](double x) {return std::log(x);});
+    std::transform(t_in->begin(), t_in->end(), t_out.begin(), [](double x) {return std::log(x);});
     test_function("log", tensor_function_factory::log(), { t_in }, t_out, dre);
 }
 
@@ -157,8 +157,8 @@ void tensor_function_factory_element_wise_multiplication_test::run() const {
     auto t1 = generate_random_tensor( { 2, 3 }, dre);
     auto t2 = generate_random_tensor(t1->dimensionalities, dre);
     tensor t_out(std::move(tensor::zero(t1->dimensionalities)));
-    for (std::size_t it = 0; it < t_out.data.size(); ++it) {
-        t_out.data[it] = t1->data[it] * t2->data[it];
+    for (std::size_t it = 0; it < t_out.size(); ++it) {
+        t_out[it] = t1->at(it) * t2->at(it);
     }
     test_function("element_wise_multiplication", tensor_function_factory::element_wise_multiplication(), { t1, t2 },
             t_out, dre);
@@ -171,7 +171,7 @@ std::string tensor_function_factory_negative_test::name() const {
 void tensor_function_factory_negative_test::run() const {
     auto t = generate_random_tensor( { 2, 3 }, dre);
     tensor t_out = *t;
-    for (auto &t_out_value : t_out.data)
+    for (auto &t_out_value : t_out)
         t_out_value *= -1;
     test_function("negative", tensor_function_factory::negative(), { t }, t_out, dre);
 }
@@ -184,11 +184,11 @@ void tensor_function_factory_softmax_test::run() const {
     auto t = generate_random_tensor( { 2, 3 }, dre);
     tensor t_out = *t;
     double total = 0.0;
-    for (auto &t_out_value : t_out.data) {
+    for (auto &t_out_value : t_out) {
         t_out_value = std::exp(t_out_value);
         total += t_out_value;
     }
-    for (auto &t_out_value : t_out.data) {
+    for (auto &t_out_value : t_out) {
         t_out_value /= total;
     }
     test_function("softmax", tensor_function_factory::softmax(), { t }, t_out, dre);

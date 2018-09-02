@@ -57,6 +57,11 @@ struct tensor_add_test: unit_test {
     void run() const override;
 };
 
+struct tensor_iterator_test: unit_test {
+	std::string name() const override;
+	void run() const override;
+};
+
 } // end namespace graph
 } // end namespace para
 

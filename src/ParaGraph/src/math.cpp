@@ -23,19 +23,19 @@ namespace graph {
 
 tensor::tensor(const tensor::N_vector& _dimensionalities, const std::vector<double>& _data) :
                 dimensionalities(_dimensionalities),
-                data(_data) {
+                m_data(_data) {
     assert(is_valid(), "tensor construction invalid, check the size of the data.");
 }
 
 tensor::tensor(tensor::N_vector&& _dimensionalities, std::vector<double>&& _data) :
                 dimensionalities(std::move(_dimensionalities)),
-                data(std::move(_data)) {
+                m_data(std::move(_data)) {
     assert(is_valid(), "tensor construction invalid, check the size of the data.");
 }
 
 tensor::tensor(const tensor::N_vector& _dimensionalities, std::vector<double>&& _data) :
                 dimensionalities(std::move(_dimensionalities)),
-                data(_data) {
+                m_data(_data) {
     assert(is_valid(), "tensor construction invalid, check the size of the data.");
 }
 
@@ -66,11 +66,19 @@ tensor::N_vector tensor::compute_position(tensor::N offset) const {
     return position;
 }
 
+tensor::iterator       tensor::begin()        { return iterator(*this, 0); }
+tensor::const_iterator tensor::begin() const  { return const_iterator(*this, 0); }
+tensor::iterator       tensor::end()          { return iterator(*this, m_data.size()); }
+tensor::const_iterator tensor::end() const    { return const_iterator(*this, m_data.size()); }
+tensor::const_iterator tensor::cbegin() const { return const_iterator(*this, 0); }
+tensor::const_iterator tensor::cend() const   { return const_iterator(*this, m_data.size()); }
+
+
 bool tensor::is_valid() const {
     N expected_size = 1;
     for (auto i_dim = dimensionalities.begin(); i_dim != dimensionalities.end(); ++i_dim)
         expected_size *= *i_dim;
-    return expected_size == data.size();
+    return expected_size == m_data.size();
 }
 
 tensor tensor::zero(const N_vector& dimensionalities) {
@@ -95,8 +103,8 @@ tensor tensor::identity_derivative(const N_vector& dimensionalities) {
     std::size_t step_size = 1
             + std::accumulate(dimensionalities.begin(), dimensionalities.end(), 1,
                     [](std::size_t acc, N dim) {return acc * dim;});
-    for (std::size_t pos = 0; pos < result.data.size(); pos += step_size) {
-        result.data[pos] = 1;
+    for (std::size_t pos = 0; pos < result.m_data.size(); pos += step_size) {
+        result.m_data[pos] = 1;
     }
     return result;
 }
@@ -137,7 +145,7 @@ tensor tensor::chain_multiplication(const tensor& lhs, const tensor& rhs, int nu
         for (N common_pos = 0; common_pos < common_size; ++common_pos) {
             N l_pos = l_part_pos * common_size + common_pos;
             N r_pos = common_pos * r_part_size + r_part_pos;
-            data[data_pos] += lhs.data[l_pos] * rhs.data[r_pos];
+            data[data_pos] += lhs.m_data[l_pos] * rhs.m_data[r_pos];
         }
     }
     return tensor(std::move(dim), std::move(data));
@@ -150,10 +158,10 @@ tensor tensor::add(const tensor& lhs, const tensor& rhs) {
     for (std::size_t i_dim = 0; i_dim < order; ++i_dim)
         assert(lhs.dimensionalities[i_dim] == rhs.dimensionalities[i_dim],
                 "Tensors must have matching dimensionalities for addition, mismatch at axis ", i_dim);
-    std::size_t size = lhs.data.size();
+    std::size_t size = lhs.m_data.size();
     std::vector<double> result_data(size);
     for (std::size_t i_data = 0; i_data < size; ++i_data) {
-        result_data[i_data] = lhs.data[i_data] + rhs.data[i_data];
+        result_data[i_data] = lhs.m_data[i_data] + rhs.m_data[i_data];
     }
     return std::move(tensor(lhs.dimensionalities, std::move(result_data)));
 }

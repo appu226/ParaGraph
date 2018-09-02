@@ -39,6 +39,7 @@ int main(int argc, char** argv) {
     register_test<tensor_identity_derivative_test>(uts);
     register_test<tensor_chain_multiplication_test>(uts);
     register_test<tensor_add_test>(uts);
+    register_test<tensor_iterator_test>(uts);
     register_test<graph_scalar_test>(uts);
     register_test<graph_tensor_test>(uts);
     register_test<tensor_function_factory_add_test>(uts);

@@ -99,7 +99,7 @@ struct tensor_function_chain_multiplication: tensor_function {
             CN k = i;
             for (std::size_t j = 0; j < p; ++j)
                 for (std::size_t l = 0; l < n; ++l) {
-                    dCdA.data[k * k_dcda + l * l_dcda + i * i_dcda + j * j_dcda] = B.data[l * l_b + j * j_b];
+                    dCdA[k * k_dcda + l * l_dcda + i * i_dcda + j * j_dcda] = B[l * l_b + j * j_b];
                 }
         }
 
@@ -120,7 +120,7 @@ struct tensor_function_chain_multiplication: tensor_function {
             CN j = l;
             for (N k = 0; k < n; ++k) {
                 for (N i = 0; i < m; ++i) {
-                    dCdB.data[k * k_dcdb + l * l_dcdb + i * i_dcdb + j * j_dcdb] = A.data[i * i_a + k * k_a];
+                    dCdB[k * k_dcdb + l * l_dcdb + i * i_dcdb + j * j_dcdb] = A[i * i_a + k * k_a];
                 }
             }
         }
@@ -151,7 +151,7 @@ struct tensor_function_softmax: tensor_function {
          */
         assert(tv.size() == 1, "softmax only works on a single input.");
         std::vector<double> F;
-        auto const & V = tv[0]->data;
+        auto const & V = *tv[0];
         F.reserve(V.size());
         double C = 0;
         std::transform(V.begin(), V.end(), std::back_inserter(F), [&C](const double in) {
@@ -197,8 +197,8 @@ struct tensor_function_softmax: tensor_function {
         auto const cf = C_and_F(tv);
         auto const C = cf.first;
         auto const & F = cf.second;
-        auto const V = tv[0]->data;
-        auto const f_size = F->data.size();
+        auto const & V = *tv[0];
+        auto const f_size = F->size();
         auto const d_size = f_size * f_size;
         auto const Csq = C * C;
         std::vector<double> D(d_size);
@@ -292,9 +292,9 @@ tensor_function_csptr tensor_function_factory::add() {
             assert(tv.size() == 2, "tensor_function_add only works with two inputs.");
             assert(tv[0]->dimensionalities == tv[1]->dimensionalities,
                     "tensor_function_add only works if input values have the same dimensionality.");
-            std::vector<double> data(tv[0]->data);
-            const std::size_t size = tv[0]->data.size();
-            const auto& rhs = tv[1]->data;
+            std::vector<double> data(tv[0]->cbegin(), tv[0]->cend());
+            const std::size_t size = tv[0]->size();
+            const auto& rhs = *tv[1];
             for (std::size_t i = 0; i < size; ++i) {
                 data[i] += rhs[i];
             }
@@ -318,17 +318,17 @@ tensor_function_csptr tensor_function_factory::sigmoid() {
     struct tensor_function_sigmoid: tensor_function {
         tensor_cptr value(const tensor_cptr_vec& tv) const override {
             assert(tv.size() == 1, "sigmoid only works on a single input.");
-            std::vector<double> data(tv[0]->data);
+            std::vector<double> data(tv[0]->cbegin(), tv[0]->cend());
             std::for_each(data.begin(), data.end(), [](double& d) {d = 1.0 / (1 + std::exp(-d));});
             return tensor_cptr(new tensor(tv[0]->dimensionalities, std::move(data)));
         }
         derivative deriv(const tensor_cptr_vec& tv) const override {
             tensor_cptr v = value(tv);
             tensor d(std::move(tensor::zero_derivative(v->dimensionalities, tv[0]->dimensionalities)));
-            const std::size_t step_size = tv[0]->data.size() + 1;
-            const std::size_t max_size = d.data.size();
+            const std::size_t step_size = tv[0]->size() + 1;
+            const std::size_t max_size = d.size();
             for (std::size_t i_d = 0, i_tv = 0, i_v = 0; i_d < max_size; i_d += step_size, ++i_tv, ++i_v) {
-                d.data[i_d] = std::exp(-tv[0]->data[i_tv]) * v->data[i_v] * v->data[i_v];
+                d[i_d] = std::exp(-tv[0]->at(i_tv)) * v->at(i_v) * v->at(i_v);
             }
             return derivative { v, tensor_cptr_vec { tensor_cptr(new tensor(std::move(d))) } };
         }
@@ -355,13 +355,13 @@ tensor_function_csptr tensor_function_factory::reduce_sum(int axis) {
             N r_size = accumulate(idims.begin() + axis + 1, idims.end(), 1, mult_func);
             N l_size = accumulate(idims.begin(), idims.begin() + axis, 1, mult_func);
             N c_size = idims[axis];
-            N input_size = input.data.size();
+            N input_size = input.size();
             std::vector<double> data(r_size * l_size, 0);
             for (std::size_t i_input = 0; i_input < input_size; ++i_input) {
                 N i_data_right = i_input % r_size;
                 N i_data_left = i_input / r_size / c_size;
                 N i_data = i_data_right + i_data_left * r_size;
-                data[i_data] += input.data[i_input];
+                data[i_data] += input[i_input];
             }
             tensor::N_vector odims(idims);
             odims.erase(odims.begin() + axis);
@@ -406,17 +406,17 @@ tensor_function_csptr tensor_function_factory::log() {
     struct tensor_function_log: tensor_function {
         tensor_cptr value(const tensor_cptr_vec& tv) const override {
             assert(tv.size() == 1, "log only works on a single input.");
-            std::vector<double> data(tv[0]->data);
+            std::vector<double> data(tv[0]->cbegin(), tv[0]->cend());
             std::for_each(data.begin(), data.end(), [](double& d) {d = std::log(d);});
             return tensor_cptr(new tensor(tv[0]->dimensionalities, std::move(data)));
         }
         derivative deriv(const tensor_cptr_vec& tv) const override {
             tensor_cptr v = value(tv);
             tensor d(std::move(tensor::zero_derivative(v->dimensionalities, tv[0]->dimensionalities)));
-            const std::size_t step_size = tv[0]->data.size() + 1;
-            const std::size_t max_size = d.data.size();
+            const std::size_t step_size = tv[0]->size() + 1;
+            const std::size_t max_size = d.size();
             for (std::size_t i_d = 0, i_tv = 0; i_d < max_size; i_d += step_size, ++i_tv) {
-                d.data[i_d] = 1 / tv[0]->data[i_tv];
+                d[i_d] = 1 / tv[0]->at(i_tv);
             }
             return derivative { v, tensor_cptr_vec { tensor_cptr(new tensor(std::move(d))) } };
         }
@@ -433,8 +433,8 @@ tensor_function_csptr tensor_function_factory::element_wise_multiplication() {
             const tensor& lhs = *tv[0], rhs = *tv[1];
             assert(lhs.dimensionalities == rhs.dimensionalities,
                     "Inputs to elemenent wise multiplication are expected to have identical dimensionalities.");
-            std::vector<double> data(lhs.data.size());
-            std::transform(lhs.data.begin(), lhs.data.end(), rhs.data.begin(), data.begin(),
+            std::vector<double> data(lhs.cbegin(), lhs.cend());
+            std::transform(lhs.cbegin(), lhs.cend(), rhs.cbegin(), data.begin(),
                     [](double l, double r) {return l * r;});
             return tensor_cptr(new tensor(lhs.dimensionalities, std::move(data)));
 
@@ -446,11 +446,11 @@ tensor_function_csptr tensor_function_factory::element_wise_multiplication() {
         static tensor_cptr mult_deriv(const tensor& t) {
             tensor::N_vector odim = t.dimensionalities;
             odim.insert(odim.end(), t.dimensionalities.begin(), t.dimensionalities.end());
-            const std::size_t t_size = t.data.size();
+            const std::size_t t_size = t.size();
             const std::size_t step_size = t_size + 1;
             std::vector<double> odata(t_size * t_size);
             for (std::size_t i_odata = 0, i_t = 0; i_t < t_size; i_odata += step_size, ++i_t) {
-                odata[i_odata] = t.data[i_t];
+                odata[i_odata] = t[i_t];
             }
             return tensor_cptr(new tensor(std::move(odim), std::move(odata)));
         }
@@ -462,14 +462,14 @@ tensor_function_csptr tensor_function_factory::negative() {
     struct tensor_function_negative: tensor_function {
         tensor_cptr value(const tensor_cptr_vec& tv) const override {
             assert(tv.size() == 1, "negative only works on a single input.");
-            std::vector<double> data(tv[0]->data);
+            std::vector<double> data(tv[0]->cbegin(), tv[0]->cend());
             std::for_each(data.begin(), data.end(), [](double& d) {d *= -1;});
             return tensor_cptr(new tensor(tv[0]->dimensionalities, std::move(data)));
         }
         derivative deriv(const tensor_cptr_vec& tv) const override {
             tensor_cptr v = value(tv);
             tensor d(std::move(tensor::identity_derivative(v->dimensionalities)));
-            for (auto &d_value : d.data)
+            for (auto &d_value : d)
                 d_value *= -1;
             return derivative { v, tensor_cptr_vec { tensor_cptr(new tensor(std::move(d))) } };
         }

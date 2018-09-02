@@ -21,6 +21,8 @@
 #include <vector>
 #include <memory>
 
+#include "iterator_facade.h"
+
 namespace para {
 namespace graph {
 
@@ -30,23 +32,15 @@ namespace graph {
  *   over a row-major vector f doubles,
  *   restricting it to a dense, random access representation.
  */
-// TODO: Abstract the api away from std::vector<double>,
-//       in particular, to allow for sparse representations.
-struct tensor {
+class tensor {
+public:
     typedef std::size_t N;
     typedef std::vector<N> N_vector;
+    typedef random_access_iterator_facade<tensor, double> iterator;
+    typedef random_access_iterator_facade<tensor const, double const> const_iterator;
 
     /** The sizes of the various dimensions of the multi-dimensional array. */
     N_vector dimensionalities;
-    /**
-     * The actual data that is stored in the tensor.
-     * The ordering is row major.
-     * E.g., if its a 2x3 matrix
-     *   "dimensionalities" would contain [2, 3]
-     *   and the ordering within "data" would be
-     *   [(0,0), (0,1), (0,2), (1,0), (1,1), (1,2)]
-     */
-    std::vector<double> data;
 
     tensor(const N_vector& dimensionalities, const std::vector<double>& data);
     tensor(N_vector&& dimensionalities, std::vector<double>&& data);
@@ -56,6 +50,18 @@ struct tensor {
     N compute_offset(const N_vector& position) const;
     /** Get n-dimensional coordinates from the offset in "data" */
     N_vector compute_position(N offset) const;
+
+    double       & operator[](N const offset) { return m_data[offset]; }
+    double const & operator[](N const offset) const { return m_data[offset]; }
+    double       & at        (N const offset) { return m_data[offset]; }
+    double const & at        (N const offset) const { return m_data[offset]; }
+    std::size_t    size() const { return m_data.size(); }
+    iterator       begin();
+    const_iterator begin() const;
+    iterator       end();
+    const_iterator end() const;
+    const_iterator cbegin() const;
+    const_iterator cend() const;
 
     /** Check the consistency of "data" and "dimensionalities" */
     bool is_valid() const;
@@ -83,6 +89,17 @@ struct tensor {
     static tensor chain_multiplication(const tensor& lhs, const tensor& rhs, int num_common_dims);
     /** Add two tensors */
     static tensor add(const tensor& lhs, const tensor& rhs);
+
+private:
+    /**
+      * The actual data that is stored in the tensor.
+      * The ordering is row major.
+      * E.g., if its a 2x3 matrix
+      *   "dimensionalities" would contain [2, 3]
+      *   and the ordering within "data" would be
+      *   [(0,0), (0,1), (0,2), (1,0), (1,1), (1,2)]
+      */
+     std::vector<double> m_data;
 };
 
 typedef std::shared_ptr<const tensor> tensor_cptr;
